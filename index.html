@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>打工人时刻表 · Web试玩版</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { min-height: 100vh; }
+  body {
+    font-family: "Microsoft YaHei", "幼圆", -apple-system, sans-serif;
+    background: linear-gradient(170deg, #FFF9EC, #FFEFDA);
+    color: #6B5B45;
+    font-size: 14px;
+    user-select: none;
+  }
+  #app { max-width: 430px; margin: 0 auto; padding: 0 14px calc(24px + env(safe-area-inset-bottom)); }
+
+  header {
+    padding: 22px 6px 14px;
+    display: flex; align-items: center;
+  }
+  header .logo {
+    font-size: 26px; margin-right: 10px; display: inline-block;
+    animation: logoTilt 2.4s ease-in-out infinite alternate; transform-origin: bottom center;
+  }
+  @keyframes logoTilt { from { transform: rotate(-8deg); } to { transform: rotate(8deg); } }
+  header .t1 { font-size: 19px; font-weight: 900; color: #8A6D3B; letter-spacing: 1px; }
+  header .t2 { font-size: 11px; color: #C9A87C; margin-top: 2px; }
+
+  .secTitle {
+    font-size: 13px; color: #B99C77; font-weight: 900; margin: 16px 4px 10px;
+    display: flex; align-items: center;
+  }
+  .secTitle::before { margin-right: 6px; font-size: 13px; }
+
+  .moment {
+    background: #FFFDF5; border: 1.5px solid #FFE3B8; border-radius: 18px;
+    padding: 13px 15px; margin-bottom: 11px;
+    box-shadow: 0 4px 14px rgba(214,158,97,.14);
+  }
+  .moment .row1 { display: flex; align-items: center; margin-bottom: 7px; }
+  .moment .icon {
+    font-size: 15px; margin-right: 8px; flex: none;
+    width: 32px; height: 32px; border-radius: 50%;
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+  .i-takeout { background: #FFF4E6; }
+  .i-tea { background: #FFF0F6; }
+  .i-off { background: #FFF9DB; }
+  .i-water { background: #E7F5FF; }
+  .i-intern { background: #EBFBEE; }
+  .moment .name { font-weight: 900; font-size: 14px; }
+  .moment .testBtn {
+    margin-left: auto;
+    background: linear-gradient(135deg, #FFE8A3, #FFD3A3); color: #8A6D3B;
+    border: none; border-radius: 999px;
+    padding: 6px 13px; font-size: 12px; font-weight: bold; cursor: pointer;
+    font-family: inherit; transition: transform .12s; flex: none;
+  }
+  .moment .testBtn:hover { transform: scale(1.06); }
+  .moment .testBtn:active { transform: scale(.94); }
+  .moment .row2 { display: flex; align-items: center; }
+  .moment .remain {
+    font-size: 23px; font-weight: 900; font-variant-numeric: tabular-nums;
+    letter-spacing: 1px; color: #FF922B;
+  }
+  .moment .remain.passed { color: #C9A87C; font-size: 13px; font-weight: normal; }
+  .moment .timeEdit { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+  .moment input[type=time] {
+    background: #FFF9EC; color: #E8590C; border: 1.5px solid #FFD8A8;
+    border-radius: 10px; padding: 5px 7px; font-size: 13px;
+    font-family: inherit; font-weight: bold; cursor: pointer; outline: none;
+  }
+  .minLabel { font-size: 11.5px; color: #B99C77; }
+  .minLabel input {
+    width: 46px; background: #FFF9EC; color: #E8590C; border: 1.5px solid #FFD8A8;
+    border-radius: 8px; padding: 4px 4px; font-size: 12px; font-weight: bold;
+    font-family: inherit; outline: none; text-align: center;
+  }
+  .moment input[type=checkbox] { width: 18px; height: 18px; accent-color: #FFA94D; cursor: pointer; }
+
+  .playGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
+  .playBtn {
+    padding: 12px 6px; background: #FFFDF5; color: #8A7357;
+    border: 1.5px solid #FFE3B8; border-radius: 14px;
+    font-size: 13px; cursor: pointer; font-family: inherit;
+    text-align: center; transition: all .13s;
+  }
+  .playBtn:hover { transform: translateY(-2px); }
+  .playBtn:active { transform: scale(.95); }
+  .playGrid .playBtn:nth-child(4n+1):hover { border-color: #FF8FAB; background: #FFF0F6; }
+  .playGrid .playBtn:nth-child(4n+2):hover { border-color: #74C0FC; background: #E7F5FF; }
+  .playGrid .playBtn:nth-child(4n+3):hover { border-color: #8CE99A; background: #EBFBEE; }
+  .playGrid .playBtn:nth-child(4n+4):hover { border-color: #FFD43B; background: #FFF9DB; }
+
+  footer {
+    margin-top: 20px; padding: 14px 16px;
+    background: #FFFDF5; border: 1.5px dashed #FFD8A8; border-radius: 16px;
+    font-size: 12px; color: #C9A87C; line-height: 1.9; text-align: center;
+  }
+  footer b { color: #E8590C; }
+
+  /* ===== 全屏特效层 ===== */
+  #fx { position: fixed; inset: 0; z-index: 999; display: none; }
+  #fx.on { display: block; }
+  #fx-stage { position: absolute; inset: 0; overflow: hidden; }
+  #fxcanvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+
+  .fx-close-hint {
+    position: absolute; bottom: 5vh; left: 0; right: 0; text-align: center;
+    font-size: 12px; color: rgba(255,255,255,.55); z-index: 40; pointer-events: none;
+  }
+
+  /* 奶茶雨标题 */
+  .tea-head { position: absolute; top: 10vh; left: 0; right: 0; text-align: center; z-index: 12; pointer-events: none; }
+  .tea-head .h1 {
+    font-size: clamp(26px, 9vw, 64px); font-weight: 900; color: #FFD3E0;
+    text-shadow: 0 0 40px rgba(255,140,190,.85);
+    animation: teaBounce 1.4s ease-in-out infinite alternate;
+  }
+  .tea-head .h2 {
+    margin-top: 1.2vh; font-size: clamp(14px, 3.6vw, 26px); font-weight: bold;
+    color: #FFF0F6; text-shadow: 0 2px 10px rgba(0,0,0,.4);
+  }
+  @keyframes teaBounce { from { transform: scale(1); } to { transform: scale(1.05); } }
+
+  /* 锁屏 */
+  .lock-screen {
+    position: absolute; inset: 0; background: #06080d;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+  }
+  .lock-screen .lk-title { font-size: clamp(26px, 8vw, 60px); font-weight: 900; color: #FF8787; letter-spacing: .2em; margin-bottom: 2.5vh; }
+  .lock-screen .lk-count { font-size: clamp(80px, 26vw, 200px); font-weight: 900; color: #FFF9EC; font-variant-numeric: tabular-nums; line-height: 1.1; }
+  .lock-screen .lk-sub { margin-top: 3vh; font-size: clamp(14px, 4.2vw, 24px); color: #FFD3A3; font-weight: bold; padding: 0 20px; text-align: center; }
+
+  /* 提醒卡 */
+  .card-overlay {
+    position: absolute; inset: 0; background: rgba(0,0,0,.72);
+    display: flex; align-items: center; justify-content: center; padding: 24px;
+    animation: fadeIn .5s ease-out both;
+  }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  .report-card {
+    width: min(480px, 92vw); background: #FFFDF5;
+    border: 2.5px solid #FFD8A8; border-radius: 24px; padding: 28px 26px;
+    box-shadow: 0 30px 100px rgba(0,0,0,.7); color: #6B5B45; text-align: center;
+    animation: cardUp .5s .1s cubic-bezier(.2, 1.3, .4, 1) both;
+  }
+  @keyframes cardUp { from { transform: translateY(50px); } to { transform: translateY(0); } }
+  .report-card h2 { font-size: 22px; margin-bottom: 16px; letter-spacing: 2px; }
+  .report-card .body { font-size: 16px; line-height: 2.1; font-weight: bold; }
+  .report-card .meme { font-size: 13px; color: #E8A0B4; margin-top: 10px; font-weight: bold; }
+  .report-card .sub { font-size: 12.5px; color: #C9A87C; margin-top: 8px; }
+  .report-card .foot { margin-top: 14px; font-size: 11px; color: #C9A87C; }
+
+  .glow { position: absolute; inset: 0; pointer-events: none; }
+  .glow-orange { box-shadow: inset 0 0 160px 40px rgba(255,169,77,.5); animation: breath 2s ease-in-out infinite; }
+  .glow-blue { box-shadow: inset 0 0 160px 40px rgba(116,192,252,.5); animation: breath 2.6s ease-in-out infinite; }
+  .glow-green { box-shadow: inset 0 0 180px 45px rgba(140,233,154,.5); animation: breath 2.4s ease-in-out infinite; }
+  @keyframes breath { 0%,100% { opacity: .4; } 50% { opacity: 1; } }
+
+  #soundHint {
+    position: fixed; top: 14px; left: 50%; transform: translateX(-50%);
+    background: #8A6D3B; color: #FFF9EC; font-size: 12px; font-weight: bold;
+    padding: 7px 16px; border-radius: 999px; z-index: 1000;
+    animation: hintPulse 2s ease-in-out infinite; display: none;
+  }
+  @keyframes hintPulse { 50% { opacity: .7; } }
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <span class="logo">🐰</span>
+    <div>
+      <div class="t1">打工人时刻表</div>
+      <div class="t2">Web 试玩版 · 点「立即触发」看热梗特效</div>
+    </div>
+  </header>
+
+  <div class="secTitle">⏰ 定时时刻（到点自动弹特效）</div>
+  <div class="moment" id="m-takeout">
+    <div class="row1">
+      <span class="icon i-takeout">🛵</span><span class="name">距离点外卖</span>
+      <button class="testBtn" data-fire="takeout">立即触发</button>
+    </div>
+    <div class="row2">
+      <span class="remain">--:--:--</span>
+      <span class="timeEdit"><input type="time" data-time="takeout"></span>
+    </div>
+  </div>
+  <div class="moment" id="m-tea">
+    <div class="row1">
+      <span class="icon i-tea">🧋</span><span class="name">距离下午茶</span>
+      <button class="testBtn" data-fire="tea">立即触发</button>
+    </div>
+    <div class="row2">
+      <span class="remain">--:--:--</span>
+      <span class="timeEdit"><input type="time" data-time="tea"></span>
+    </div>
+  </div>
+  <div class="moment" id="m-off">
+    <div class="row1">
+      <span class="icon i-off">🏃</span><span class="name">距离下班</span>
+      <button class="testBtn" data-fire="off">立即触发</button>
+    </div>
+    <div class="row2">
+      <span class="remain">--:--:--</span>
+      <span class="timeEdit"><input type="time" data-time="off"></span>
+    </div>
+  </div>
+
+  <div class="secTitle">🔁 循环提醒（开关打开后每隔 N 分钟弹一次）</div>
+  <div class="moment" id="m-water">
+    <div class="row1">
+      <span class="icon i-water">💧</span><span class="name">喝水提醒</span>
+      <button class="testBtn" data-fire="water">立即触发</button>
+    </div>
+    <div class="row2">
+      <span class="remain">已关闭</span>
+      <span class="timeEdit">
+        <label class="minLabel">每 <input type="number" id="water-min" min="1" max="720"> 分钟</label>
+        <input type="checkbox" id="water-on">
+      </span>
+    </div>
+  </div>
+  <div class="moment" id="m-intern">
+    <div class="row1">
+      <span class="icon i-intern">🌱</span><span class="name">关心带教实习生</span>
+      <button class="testBtn" data-fire="intern">立即触发</button>
+    </div>
+    <div class="row2">
+      <span class="remain">已关闭</span>
+      <span class="timeEdit">
+        <label class="minLabel">每 <input type="number" id="intern-min" min="1" max="720"> 分钟</label>
+        <input type="checkbox" id="intern-on">
+      </span>
+    </div>
+  </div>
+
+  <div class="secTitle">🎮 效果试玩（点击屏幕任意位置关闭）</div>
+  <div class="playGrid">
+    <button class="playBtn" data-fire="tea">🧋 三点几咧饮茶先</button>
+    <button class="playBtn" data-fire="off">🏃 强制锁屏</button>
+    <button class="playBtn" data-fire="takeout">🛵 干饭人点外卖</button>
+    <button class="playBtn" data-fire="water">💧 多喝热水</button>
+    <button class="playBtn" data-fire="intern">🌱 实习生情绪关怀</button>
+    <button class="playBtn" data-fire="coin">💰 金币雨加鸡腿</button>
+  </div>
+
+  <footer>
+    本页为 <b>Web 试玩版</b> · Windows 桌面完整版支持任务栏常驻、到点自动提醒<br>
+    🐰 摸鱼要摸，班也要上，水更要喝
+  </footer>
+</div>
+
+<div id="soundHint">👆 点页面任意位置开启音效</div>
+<div id="fx">
+  <div id="fx-stage"></div>
+  <canvas id="fxcanvas"></canvas>
+</div>
+
+<script>
+'use strict';
+const LS_KEY = 'offwork_web_v1';
+const MOMENTS = ['takeout', 'tea', 'off'];
+const INTERVALS = [
+  { key: 'water', def: 30, defOn: true },
+  { key: 'intern', def: 60, defOn: false }
+];
+const DEFAULTS = {
+  times: { takeout: '11:00', tea: '15:00', off: '18:00' },
+  water: { on: true, minutes: 30 },
+  intern: { on: false, minutes: 60 }
+};
+
+function loadSettings() {
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    if (!raw) return JSON.parse(JSON.stringify(DEFAULTS));
+    const s = JSON.parse(raw);
+    const merged = Object.assign(JSON.parse(JSON.stringify(DEFAULTS)), s);
+    merged.times = Object.assign({}, DEFAULTS.times, s.times || {});
+    merged.water = Object.assign({}, DEFAULTS.water, s.water || {});
+    merged.intern = Object.assign({}, DEFAULTS.intern, s.intern || {});
+    return merged;
+  } catch (e) { return JSON.parse(JSON.stringify(DEFAULTS)); }
+}
+let settings = loadSettings();
+function saveSettings() { try { localStorage.setItem(LS_KEY, JSON.stringify(settings)); } catch (e) {} }
+let firedToday = {};
+const intervalNext = {};
+
+// ================= 音效（代码合成；手机端首次点按后解锁） =================
+let AC = null;
+let audioReady = false;
+function ac() {
+  if (!AC) AC = new (window.AudioContext || window.webkitAudioContext)();
+  if (AC.state === 'suspended') AC.resume();
+  return AC;
+}
+document.addEventListener('pointerdown', () => {
+  try {
+    ac();
+    audioReady = true;
+    document.getElementById('soundHint').style.display = 'none';
+  } catch (e) {}
+}, { once: true });
+
+function tone(freq, dur, opt) {
+  opt = opt || {};
+  try {
+    const ctx = ac();
+    const t0 = ctx.currentTime + (opt.when || 0);
+    const o = ctx.createOscillator();
+    const g = ctx.createGain();
+    o.type = opt.type || 'sine';
+    o.frequency.setValueAtTime(freq, t0);
+    if (opt.slide) o.frequency.exponentialRampToValueAtTime(opt.slide, t0 + dur);
+    g.gain.setValueAtTime((opt.vol || 0.25), t0);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    o.connect(g); g.connect(ctx.destination);
+    o.start(t0); o.stop(t0 + dur + 0.05);
+  } catch (e) {}
+}
+const S = {
+  pop() { tone(620, 0.1, { slide: 980, vol: 0.16 }); },
+  drop() { tone(1500, 0.15, { slide: 320, vol: 0.18 }); },
+  slurp() { tone(500, 0.1, { slide: 200, vol: 0.13 }); tone(700, 0.08, { when: 0.12, slide: 300, vol: 0.1 }); },
+  coin() { tone(988, 0.08, { type: 'square', vol: 0.1 }); tone(1319, 0.26, { type: 'square', vol: 0.1, when: 0.08 }); },
+  tick() { tone(1100, 0.06, { type: 'square', vol: 0.12 }); },
+  alarm() { tone(880, 0.14, { type: 'square', vol: 0.16 }); tone(880, 0.14, { type: 'square', vol: 0.16, when: 0.26 }); },
+  chime() { tone(784, 0.25, { vol: 0.18, type: 'triangle' }); tone(1046, 0.45, { when: 0.22, vol: 0.18, type: 'triangle' }); },
+  fanfare() { [523, 659, 784, 1046].forEach((f, i) => tone(f, 0.3, { when: i * 0.15, vol: 0.16, type: 'triangle' })); }
+};
+
+// ================= 特效层 =================
+const fxEl = document.getElementById('fx');
+const stage = document.getElementById('fx-stage');
+const canvas = document.getElementById('fxcanvas');
+const ctx2d = canvas.getContext('2d');
+const timers = [];
+const rafs = [];
+let done = false;
+
+function sizeCanvas() { canvas.width = innerWidth; canvas.height = innerHeight; }
+
+function later(fn, ms) { const id = setTimeout(fn, ms); timers.push(id); return id; }
+function every(fn, ms) { const id = setInterval(fn, ms); timers.push(id); return id; }
+function raf(fn) { const id = requestAnimationFrame(fn); rafs.push(id); return id; }
+
+function startEffect() {
+  endEffect(false);
+  done = false;
+  timers.length = 0; rafs.length = 0;
+  stage.innerHTML = '';
+  sizeCanvas();
+  fxEl.classList.add('on');
+}
+function endEffect(playSound) {
+  if (done) return;
+  done = true;
+  timers.forEach(clearTimeout); timers.forEach(clearInterval);
+  rafs.forEach(cancelAnimationFrame);
+  ctx2d && ctx2d.clearRect(0, 0, canvas.width, canvas.height);
+  fxEl.classList.remove('on');
+  stage.innerHTML = '';
+}
+fxEl.addEventListener('click', () => { endEffect(true); });
+
+const DEFAULT_DUR = {
+  tea: 8, off: 10, takeout: 16, water: 14, intern: 16, coin: 8
+};
+
+const FX = {};
+FX.tea = function () {
+  const box = document.createElement('div');
+  box.className = 'tea-head';
+  box.innerHTML =
+    '<div class="h1">三点几咧！饮茶先啦！</div>' +
+    '<div class="h2">做乜嘢啊你～摸鱼摸一阵先啦</div>';
+  stage.appendChild(box);
+  const drops = [];
+  every(() => {
+    for (let i = 0; i < 4; i++) {
+      drops.push({
+        x: Math.random() * canvas.width, y: -50,
+        vy: 3 + Math.random() * 5, size: 26 + Math.random() * 36,
+        rot: Math.random() * Math.PI * 2, vr: (Math.random() - 0.5) * 0.15,
+        e: Math.random() < 0.7 ? '🧋' : '☕'
+      });
+    }
+    if (Math.random() < 0.4) S.slurp();
+  }, 150);
+  const draw = () => {
+    if (done) return;
+    ctx2d.clearRect(0, 0, canvas.width, canvas.height);
+    for (let i = drops.length - 1; i >= 0; i--) {
+      const d = drops[i];
+      d.y += d.vy; d.rot += d.vr;
+      if (d.y > canvas.height + 60) { drops.splice(i, 1); continue; }
+      ctx2d.save();
+      ctx2d.translate(d.x, d.y);
+      ctx2d.rotate(d.rot);
+      ctx2d.font = d.size + 'px serif';
+      ctx2d.textAlign = 'center';
+      ctx2d.fillText(d.e, 0, 0);
+      ctx2d.restore();
+    }
+    raf(draw);
+  };
+  draw();
+};
+
+FX.off = function () {
+  const lk = document.createElement('div');
+  lk.className = 'lock-screen';
+  lk.innerHTML =
+    '<div class="lk-title">已 强 制 锁 定</div>' +
+    '<div class="lk-count" id="lk-c">10</div>' +
+    '<div class="lk-sub">下班不积极，思想有问题 · 末班车不等你</div>' +
+    '<div class="fx-close-hint">点击任意位置解锁</div>';
+  stage.appendChild(lk);
+  let n = 10;
+  every(() => {
+    if (done) return;
+    n--;
+    const c = lk.querySelector('#lk-c');
+    if (c) c.textContent = Math.max(0, n);
+    S.tick();
+    if (n <= 0) endEffect(true);
+  }, 1000);
+};
+
+FX.takeout = function () {
+  const g = document.createElement('div');
+  g.className = 'glow glow-orange';
+  const c = document.createElement('div');
+  c.className = 'card-overlay';
+  c.innerHTML =
+    '<div class="report-card">' +
+    '<h2 style="color:#E8590C;">🛵 干饭人！干饭魂！</h2>' +
+    '<div class="body">11点啦！今天吃什么？<br>干饭都是人上人</div>' +
+    '<div class="sub">先点外卖，再谈人生 🍚</div>' +
+    '<div class="foot">点击任意位置关闭</div>' +
+    '</div>';
+  stage.appendChild(g);
+  stage.appendChild(c);
+  S.chime();
+  later(() => S.alarm(), 1000);
+};
+
+FX.water = function () {
+  const g = document.createElement('div');
+  g.className = 'glow glow-blue';
+  const c = document.createElement('div');
+  c.className = 'card-overlay';
+  c.innerHTML =
+    '<div class="report-card">' +
+    '<h2 style="color:#1971C2;">💧 多喝热水</h2>' +
+    '<div class="body">这次是真心的<br>今天八杯水，你才第几杯？</div>' +
+    '<div class="sub">喝完顺便站起来晃晃</div>' +
+    '<div class="foot">点击任意位置关闭</div>' +
+    '</div>';
+  stage.appendChild(g);
+  stage.appendChild(c);
+  S.drop();
+  later(() => S.drop(), 500);
+  later(() => S.chime(), 1000);
+};
+
+FX.intern = function () {
+  const g = document.createElement('div');
+  g.className = 'glow glow-green';
+  const c = document.createElement('div');
+  c.className = 'card-overlay';
+  c.innerHTML =
+    '<div class="report-card">' +
+    '<h2 style="color:#2B8A3E;">🌱 该去看看实习生啦</h2>' +
+    '<div class="body">情绪体检三连：<br>今天开心吗？ · 有没有被为难？ · 累不累？</div>' +
+    '<div class="meme">看看她今天有没有：破防 / emo / 蚌埠住了</div>' +
+    '<div class="sub">带教不只带活儿，也要带情绪 💚</div>' +
+    '<div class="foot">点击任意位置关闭</div>' +
+    '</div>';
+  stage.appendChild(g);
+  stage.appendChild(c);
+  S.chime();
+  later(() => S.chime(), 1200);
+};
+
+FX.coin = function () {
+  const coins = [];
+  const COLORS = ['#ffd166', '#ffc93c', '#ffaa00'];
+  every(() => {
+    for (let i = 0; i < 3; i++) {
+      coins.push({
+        x: Math.random() * canvas.width, y: -40,
+        r: 12 + Math.random() * 20, vy: 4 + Math.random() * 6,
+        vx: (Math.random() - 0.5) * 2.5, rot: Math.random() * Math.PI,
+        vr: (Math.random() - 0.5) * 0.2, c: COLORS[(Math.random() * 3) | 0]
+      });
+    }
+    if (Math.random() < 0.5) S.coin();
+  }, 160);
+  const draw = () => {
+    if (done) return;
+    ctx2d.clearRect(0, 0, canvas.width, canvas.height);
+    for (let i = coins.length - 1; i >= 0; i--) {
+      const c = coins[i];
+      c.y += c.vy; c.x += c.vx; c.rot += c.vr;
+      if (c.y > canvas.height + 60) { coins.splice(i, 1); continue; }
+      ctx2d.save();
+      ctx2d.translate(c.x, c.y);
+      ctx2d.rotate(c.rot);
+      ctx2d.beginPath();
+      ctx2d.arc(0, 0, c.r, 0, Math.PI * 2);
+      ctx2d.fillStyle = c.c;
+      ctx2d.fill();
+      ctx2d.strokeStyle = 'rgba(160,110,0,.7)';
+      ctx2d.lineWidth = 3;
+      ctx2d.stroke();
+      ctx2d.fillStyle = '#8a6d00';
+      ctx2d.font = '900 ' + c.r + 'px sans-serif';
+      ctx2d.textAlign = 'center';
+      ctx2d.textBaseline = 'middle';
+      ctx2d.fillText('¥', 0, 1);
+      ctx2d.restore();
+    }
+    raf(draw);
+  };
+  draw();
+};
+
+function play(key) {
+  const fn = FX[key];
+  if (!fn) return;
+  startEffect();
+  if (!audioReady && document.getElementById('soundHint').style.display !== 'block') {
+    document.getElementById('soundHint').style.display = 'block';
+  }
+  fn();
+  later(() => endEffect(true), (DEFAULT_DUR[key] || 12) * 1000 + 500);
+}
+
+// ================= 触发接线 =================
+document.querySelectorAll('[data-fire]').forEach(b => {
+  b.addEventListener('click', () => play(b.dataset.fire));
+});
+MOMENTS.forEach(m => {
+  const input = document.querySelector(`input[data-time="${m}"]`);
+  input.value = settings.times[m];
+  input.addEventListener('change', () => {
+    if (input.value) { settings.times[m] = input.value; saveSettings(); }
+  });
+});
+INTERVALS.forEach(iv => {
+  const onEl = document.getElementById(iv.key + '-on');
+  const minEl = document.getElementById(iv.key + '-min');
+  onEl.checked = settings[iv.key].on;
+  minEl.value = settings[iv.key].minutes;
+  onEl.addEventListener('change', () => {
+    settings[iv.key].on = onEl.checked;
+    if (onEl.checked) intervalNext[iv.key] = Date.now() + settings[iv.key].minutes * 60000;
+    saveSettings();
+  });
+  minEl.addEventListener('change', () => {
+    settings[iv.key].minutes = Math.max(1, Math.min(720, parseInt(minEl.value) || iv.def));
+    minEl.value = settings[iv.key].minutes;
+    if (settings[iv.key].on) intervalNext[iv.key] = Date.now() + settings[iv.key].minutes * 60000;
+    saveSettings();
+  });
+});
+
+// ================= 倒计时引擎 =================
+function msUntil(hhmm) {
+  const parts = (hhmm || '').split(':');
+  const h = parseInt(parts[0]) || 0, m = parseInt(parts[1]) || 0;
+  const now = new Date();
+  const target = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h, m, 0, 0);
+  return target.getTime() - now.getTime();
+}
+function fmt(ms) {
+  if (ms <= 0) return '已到达';
+  const s = Math.floor(ms / 1000);
+  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
+  return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0') + ':' + String(sec).padStart(2, '0');
+}
+function fmtShort(ms) {
+  const s = Math.floor(ms / 1000);
+  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
+  return h > 0
+    ? h + ':' + String(m).padStart(2, '0') + ':' + String(sec).padStart(2, '0')
+    : String(m).padStart(2, '0') + ':' + String(sec).padStart(2, '0');
+}
+function todayStr() {
+  const d = new Date();
+  return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate();
+}
+
+function tick() {
+  const day = todayStr();
+  MOMENTS.forEach(m => {
+    const ms = msUntil(settings.times[m]);
+    const el = document.querySelector('#m-' + m + ' .remain');
+    const card = document.getElementById('m-' + m);
+    const key = m + '|' + day;
+    el.classList.remove('passed');
+    el.style.color = '';
+    if (ms <= 0 && ms > -60000) {
+      el.textContent = '时间到！';
+      el.style.color = '#e5484d';
+      if (!firedToday[key]) { firedToday[key] = true; play(m); }
+    } else if (ms <= 0) {
+      el.textContent = '已过 ' + settings.times[m];
+      el.classList.add('passed');
+    } else {
+      el.textContent = fmt(ms);
+    }
+  });
+  INTERVALS.forEach(iv => {
+    const cfg = settings[iv.key];
+    const el = document.querySelector('#m-' + iv.key + ' .remain');
+    if (!cfg.on) { el.textContent = '已关闭'; el.classList.add('passed'); return; }
+    el.classList.remove('passed');
+    const mins = Math.max(1, parseInt(cfg.minutes) || 30);
+    if (!intervalNext[iv.key]) intervalNext[iv.key] = Date.now() + mins * 60000;
+    const left = intervalNext[iv.key] - Date.now();
+    if (left <= 0) {
+      play(iv.key);
+      intervalNext[iv.key] = Date.now() + mins * 60000;
+      el.textContent = fmtShort(mins * 60000);
+    } else {
+      el.textContent = fmtShort(left);
+    }
+  });
+}
+setInterval(tick, 500);
+tick();
+console.log('webdemo ready, settings:', JSON.stringify(settings));
+</script>
+</body>
+</html>
